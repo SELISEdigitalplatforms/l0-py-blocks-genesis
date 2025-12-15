@@ -67,6 +67,7 @@ async def root():
 
 @app.get("/health")
 async def health(request: Request):
+    logger.info("Health endpoint called")
     Activity.set_current_properties({
         "http.query": str(dict(request.query_params)),
         "http.headers": str(dict(request.headers))

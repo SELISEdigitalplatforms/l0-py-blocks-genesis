@@ -1,6 +1,7 @@
 [project]
 name = "seliseblocks-lmt"
-version = "0.0.1"
+version = "0.0.3"
+readme = "README.md"
 description = "Logging, Monitoring, and Tracing library for Selise Blocks applications using Azure Service Bus."
 authors = [{name="Selise Blocks", email="mostafizur.rahman@selisegroup.com"}]
 keywords = ["Selise", "Selise Blocks", "LMT", "Logging", "Monitoring", "Tracing", "Azure Service Bus", "OpenTelemetry"]
