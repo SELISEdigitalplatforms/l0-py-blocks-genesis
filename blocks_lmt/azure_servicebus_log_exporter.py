@@ -357,7 +357,7 @@ class TraceContextFilter(logging.Filter):
     Filter that adds trace context to log records.
     """
     def __init__(self, x_blocks_key: str):
-        super.__init__()
+        super().__init__()
         self.tenant_id = x_blocks_key
     
     def filter(self, record: logging.LogRecord) -> bool:

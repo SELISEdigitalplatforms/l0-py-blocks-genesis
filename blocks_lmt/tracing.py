@@ -2,13 +2,12 @@ from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+
 
 from blocks_lmt.azure_servicebus_trace_exporter import AzureServiceBusTraceExporter
 
 
 def configure_tracing(
-    app,
     x_blocks_key: str,
     blocks_service_id: str,
     connection_string: str,
@@ -49,8 +48,6 @@ def configure_tracing(
 
     processor = BatchSpanProcessor(exporter)
     trace.get_tracer_provider().add_span_processor(processor)
-
-    FastAPIInstrumentor.instrument_app(app)
     
     print(f"Tracing configured with Azure Service Bus exporter (Topic: lmt-{blocks_service_id})")
     print(f"FastAPI instrumentation enabled - all HTTP requests will be traced")
