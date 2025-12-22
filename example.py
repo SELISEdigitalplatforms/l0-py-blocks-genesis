@@ -16,9 +16,9 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 # ============================================================================
 
 configure_logger(
-    x_blocks_key="your-x-blocks-key",
-    blocks_service_id="your-service-id",
-    connection_string="your-connection-string",
+    x_blocks_key="A70533559CEA49B293BD2D0204E193F4",
+    blocks_service_id="SB-8CFFC6D8925C491290DA6286BBE6046C",
+    connection_string="Endpoint=sb://blocks.servicebus.windows.net/;SharedAccessKeyName=SB-8CFFC6D8925C491290DA6286BBE6046C;SharedAccessKey=bA8hfxxrM2XwG9C/s3ssXYLUK4SDQM3TUVSGgAsPIas=;EntityPath=lmt-SB-8CFFC6D8925C491290DA6286BBE6046C",
     batch_size=100,
     flush_interval_sec=5.0,
     max_retries=3,
@@ -26,9 +26,9 @@ configure_logger(
 )
 
 configure_tracing(
-    x_blocks_key="your-x-blocks-key",
-    blocks_service_id="your-service-id",
-    connection_string="your-connection-string",
+    x_blocks_key="A70533559CEA49B293BD2D0204E193F4",
+    blocks_service_id="SB-8CFFC6D8925C491290DA6286BBE6046C",
+    connection_string="Endpoint=sb://blocks.servicebus.windows.net/;SharedAccessKeyName=SB-8CFFC6D8925C491290DA6286BBE6046C;SharedAccessKey=bA8hfxxrM2XwG9C/s3ssXYLUK4SDQM3TUVSGgAsPIas=;EntityPath=lmt-SB-8CFFC6D8925C491290DA6286BBE6046C",
     batch_size=100,
     flush_interval=5.0,
     max_retries=3,
