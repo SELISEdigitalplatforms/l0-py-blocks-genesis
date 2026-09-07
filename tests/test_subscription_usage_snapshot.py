@@ -156,3 +156,107 @@ async def test_db_error_leaves_snapshot_none_and_does_not_raise():
         result = await _dep(bypass_authorization=False)(_request())
 
     assert SubscriptionUsageContext.current() is None
+
+
+# ---------------- fallback ids for a caller that carries no context ----------------
+
+
+@pytest.mark.asyncio
+async def test_fallback_ids_are_used_when_there_is_no_context():
+    with (
+        patch(AUTH + "BlocksContextManager") as mock_ctx_mgr,
+        patch(AUTH + "SubscriptionUsageService") as mock_service,
+    ):
+        mock_ctx_mgr.get_context.return_value = None
+        mock_service.get_usage_current = AsyncMock(return_value=[])
+
+        result = await _dep(tenant_id="t9", organization_id="org-9")(_request())
+
+    assert result is None
+    mock_service.get_usage_current.assert_awaited_once_with(tenant_id="t9", organization_id="org-9")
+    assert SubscriptionUsageContext.current() == []
+
+
+@pytest.mark.asyncio
+async def test_half_a_fallback_identity_still_raises_401():
+    with patch(AUTH + "BlocksContextManager") as mock_ctx_mgr:
+        mock_ctx_mgr.get_context.return_value = None
+        with pytest.raises(HTTPException) as exc:
+            await _dep(tenant_id="t9")(_request())
+    assert exc.value.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_the_context_wins_over_the_fallback_ids():
+    ctx = BlocksContext(tenant_id="t1", organization_id="org-1", is_authenticated=True)
+    with (
+        patch(AUTH + "BlocksContextManager") as mock_ctx_mgr,
+        patch(AUTH + "SubscriptionUsageService") as mock_service,
+    ):
+        mock_ctx_mgr.get_context.return_value = ctx
+        mock_service.get_usage_current = AsyncMock(return_value=[])
+
+        await _dep(tenant_id="t9", organization_id="org-9")(_request())
+
+    mock_service.get_usage_current.assert_awaited_once_with(tenant_id="t1", organization_id="org-1")
+
+
+@pytest.mark.asyncio
+async def test_a_fallback_id_fills_in_what_the_context_lacks():
+    ctx = BlocksContext(tenant_id="t1", organization_id="", is_authenticated=True)
+    with (
+        patch(AUTH + "BlocksContextManager") as mock_ctx_mgr,
+        patch(AUTH + "SubscriptionUsageService") as mock_service,
+    ):
+        mock_ctx_mgr.get_context.return_value = ctx
+        mock_service.get_usage_current = AsyncMock(return_value=[])
+
+        await _dep(organization_id="org-9")(_request())
+
+    mock_service.get_usage_current.assert_awaited_once_with(tenant_id="t1", organization_id="org-9")
+
+
+# ---------------- resolve_subscription_usage: the same thing without FastAPI ----------------
+
+
+@pytest.mark.asyncio
+async def test_resolver_works_with_ids_alone_and_no_request():
+    with (
+        patch(AUTH + "BlocksContextManager") as mock_ctx_mgr,
+        patch(AUTH + "SubscriptionUsageService") as mock_service,
+    ):
+        mock_ctx_mgr.get_context.return_value = None
+        mock_service.get_usage_current = AsyncMock(return_value=[])
+
+        snapshot = await auth.resolve_subscription_usage(tenant_id="t9", organization_id="org-9")
+
+    assert snapshot == []
+    assert SubscriptionUsageContext.current() == []
+
+
+@pytest.mark.asyncio
+async def test_resolver_without_any_identity_leaves_it_none_without_querying():
+    with (
+        patch(AUTH + "BlocksContextManager") as mock_ctx_mgr,
+        patch(AUTH + "SubscriptionUsageService") as mock_service,
+    ):
+        mock_ctx_mgr.get_context.return_value = None
+
+        assert await auth.resolve_subscription_usage() is None
+
+    mock_service.get_usage_current.assert_not_called()
+    assert SubscriptionUsageContext.current() is None
+
+
+@pytest.mark.asyncio
+async def test_resolver_swallows_a_read_failure():
+    with (
+        patch(AUTH + "BlocksContextManager") as mock_ctx_mgr,
+        patch(AUTH + "SubscriptionUsageService") as mock_service,
+    ):
+        mock_ctx_mgr.get_context.return_value = None
+        mock_service.get_usage_current = AsyncMock(side_effect=ConnectionError("mongo down"))
+
+        assert await auth.resolve_subscription_usage(tenant_id="t9", organization_id="org-9") is None
+
+    assert SubscriptionUsageContext.current() is None
