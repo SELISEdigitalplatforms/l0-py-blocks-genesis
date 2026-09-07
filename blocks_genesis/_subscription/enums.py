@@ -1,15 +1,18 @@
 """Stored ints on SubscriptionUsageCurrent.SubscriptionStatus.
 
-The writer lives outside this workspace, so this mapping is recorded, not derived. Correct it
-here if a row contradicts it -- blocks-utilities' own enum disagrees (Active = 3 there).
+Mirrors blocks-utilities, which writes the field and is the authority:
+server/Subscription.DomainService/Enums/SubscriptionStatus.cs. The values there are explicit
+precisely because they are persisted -- inserting a member without one would renumber every
+value after it and silently reinterpret stored documents. Keep the two in step.
 """
 from enum import IntEnum
 
 
 class SubscriptionStatus(IntEnum):
     INCOMPLETE = 0
-    TRIALING = 1
-    ACTIVE = 2
-    PAST_DUE = 3
-    CANCELED = 4
-    EXPIRED = 5
+    INCOMPLETE_EXPIRED = 1
+    TRIALING = 2
+    ACTIVE = 3
+    PAST_DUE = 4
+    UNPAID = 5
+    CANCELED = 6

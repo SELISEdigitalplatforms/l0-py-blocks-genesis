@@ -18,6 +18,7 @@ from blocks_genesis._delegation.context import AuthClaimsContext
 from blocks_genesis._database.db_context import DbContext
 from blocks_genesis._lmt.activity import Activity
 from blocks_genesis._subscription.context import SubscriptionUsageContext
+from blocks_genesis._subscription.models import UsageResult
 from blocks_genesis._subscription.usage_service import SubscriptionUsageService
 from blocks_genesis._tenant.tenant import Tenant
 from blocks_genesis._tenant.tenant_service import TenantService
@@ -707,7 +708,43 @@ def authorize(resource_name: str = None, bypass_authorization: bool = False):
 # SUBSCRIPTION USAGE SNAPSHOT
 # ============================================================================
 
-def subscription_usage_snapshot(bypass_authorization: bool = False):
+async def resolve_subscription_usage(
+    *,
+    tenant_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+) -> Optional[List[UsageResult]]:
+    """Set SubscriptionUsageContext. Context ids win, the parameters are the fallback.
+
+    Never raises -- missing ids or a failed read leave the snapshot None.
+    """
+    context = BlocksContextManager.get_context()
+    if context is not None:
+        tenant_id = context.tenant_id or tenant_id
+        organization_id = context.organization_id or organization_id
+
+    if not tenant_id or not organization_id:
+        SubscriptionUsageContext.set(None)
+        return None
+
+    try:
+        snapshot = await SubscriptionUsageService.get_usage_current(
+            tenant_id=tenant_id,
+            organization_id=organization_id,
+        )
+    except Exception:
+        _logger.exception("Usage lookup failed; snapshot left None.")
+        snapshot = None
+
+    SubscriptionUsageContext.set(snapshot)
+    return snapshot
+
+
+def subscription_usage_snapshot(
+    bypass_authorization: bool = False,
+    *,
+    tenant_id: Optional[str] = None,
+    organization_id: Optional[str] = None,
+):
     """
     Resolves SubscriptionUsageContext, the same way authorize() resolves identity.
 
@@ -715,6 +752,9 @@ def subscription_usage_snapshot(bypass_authorization: bool = False):
     call. bypass_authorization=True: authenticate on its own first, via
     authorize(bypass_authorization=True) -- use standalone, with no authorize()
     alongside it.
+
+    tenant_id / organization_id: fallback ids for a request with no context. Without
+    them, a missing context is still a 401.
 
     Reads usage straight from Mongo (no Utilities HTTP call). Read it back with
     `SubscriptionUsageContext.current()`. Never raises on a missing organization or a DB
@@ -726,24 +766,12 @@ def subscription_usage_snapshot(bypass_authorization: bool = False):
         else:
             context = BlocksContextManager.get_context()
 
-        if not context:
+        if not context and not (tenant_id and organization_id):
             raise HTTPException(status_code=401, detail="Missing context")
 
-        if not context.organization_id:
-            SubscriptionUsageContext.set(None)
-            return context
-
-        try:
-            SubscriptionUsageContext.set(
-                await SubscriptionUsageService.get_usage_current(
-                    tenant_id=context.tenant_id,
-                    organization_id=context.organization_id,
-                )
-            )
-        except Exception:
-            _logger.exception("subscription_usage_snapshot: usage lookup failed; leaving it None.")
-            SubscriptionUsageContext.set(None)
-
+        await resolve_subscription_usage(
+            tenant_id=tenant_id, organization_id=organization_id
+        )
         return context
 
     return Depends(dependency)

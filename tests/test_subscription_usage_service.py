@@ -63,7 +63,7 @@ def _usage_doc(
     meter_key="tkn",
     tenant_id="t1",
     organization_id="default",
-    status=2,
+    status=3,
     included=500,
     used=800,
     remaining=0,
@@ -138,26 +138,29 @@ async def test_filters_by_tenant_org_active_status_and_current_period(provider):
     filt = provider.collection.last_filter
     assert filt["TenantId"] == "t1"
     assert filt["OrganizationId"] == "default"
-    assert filt["SubscriptionStatus"] == 2
+    # The literal is the point: it pins the wire value blocks-utilities writes for Active.
+    # Deriving it from the enum here would make this test agree with any mapping, including a
+    # wrong one -- which is exactly the drift that made every active row invisible.
+    assert filt["SubscriptionStatus"] == 3
     assert "$lte" in filt["PeriodStartUtc"]
     assert "$gt" in filt["PeriodEndUtc"]
 
 
 @pytest.mark.asyncio
 async def test_cancelled_subscription_row_is_excluded(provider):
-    provider.collection.docs = [_usage_doc(status=4)]  # Canceled
+    provider.collection.docs = [_usage_doc(status=6)]  # Canceled
     result = await SubscriptionUsageService.get_usage_current(tenant_id="t1", organization_id="default")
     assert result == []
 
 
 @pytest.mark.asyncio
 async def test_only_active_is_fetched_trialing_and_past_due_are_excluded(provider):
-    # Active-only by design: 1=Trialing, 3=PastDue, 5=Expired are all skipped.
+    # Active-only by design: 2=Trialing, 4=PastDue, 5=Unpaid are all skipped.
     provider.collection.docs = [
-        _usage_doc(meter_key="trialing", status=1),
-        _usage_doc(meter_key="past-due", status=3),
-        _usage_doc(meter_key="expired", status=5),
-        _usage_doc(meter_key="active", status=2),
+        _usage_doc(meter_key="trialing", status=2),
+        _usage_doc(meter_key="past-due", status=4),
+        _usage_doc(meter_key="unpaid", status=5),
+        _usage_doc(meter_key="active", status=3),
     ]
     result = await SubscriptionUsageService.get_usage_current(tenant_id="t1", organization_id="default")
     assert [r.meter_key for r in result] == ["active"]
@@ -183,7 +186,7 @@ async def test_multiple_meters_all_returned(provider):
 @pytest.mark.asyncio
 async def test_missing_numeric_fields_default_to_zero(provider):
     provider.collection.docs = [{
-        "TenantId": "t1", "OrganizationId": "default", "SubscriptionStatus": 2, "MeterKey": "tkn",
+        "TenantId": "t1", "OrganizationId": "default", "SubscriptionStatus": 3, "MeterKey": "tkn",
         "PeriodStartUtc": datetime.now(timezone.utc) - timedelta(days=1),
         "PeriodEndUtc": datetime.now(timezone.utc) + timedelta(days=29),
     }]

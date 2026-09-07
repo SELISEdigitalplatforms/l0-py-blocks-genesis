@@ -55,7 +55,7 @@ class _FakeProvider:
         return self.collection
 
 
-def _row(meter_key, used, included, remaining, overage, *, status=2, org="default", tenant="t1"):
+def _row(meter_key, used, included, remaining, overage, *, status=3, org="default", tenant="t1"):
     now = datetime.now(timezone.utc)
     return {
         "_id": f"sub-1:{meter_key}:M20260902T024500Z",
@@ -139,7 +139,7 @@ def test_a_real_request_carries_the_snapshot_from_dependency_to_handler():
     assert provider.requested == [("SubscriptionUsageCurrent", "t1")]
     assert collection.last_filter["TenantId"] == "t1"
     assert collection.last_filter["OrganizationId"] == "default"
-    assert collection.last_filter["SubscriptionStatus"] == 2
+    assert collection.last_filter["SubscriptionStatus"] == 3
 
 
 def test_a_real_request_with_no_matching_row_reports_an_empty_snapshot():
