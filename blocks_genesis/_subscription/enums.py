@@ -1,9 +1,7 @@
 """Stored ints on SubscriptionUsageCurrent.SubscriptionStatus.
 
-Mirrors blocks-utilities, which writes the field and is the authority:
-server/Subscription.DomainService/Enums/SubscriptionStatus.cs. The values there are explicit
-precisely because they are persisted -- inserting a member without one would renumber every
-value after it and silently reinterpret stored documents. Keep the two in step.
+Mirrors blocks-utilities, which writes the field. Values are explicit because they are
+stored -- keep the two in step.
 """
 from enum import IntEnum
 
